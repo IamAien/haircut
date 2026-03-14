@@ -1,15 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Heart, RefreshCcw, Sparkles } from "lucide-react";
-
-type ResultType = {
-  title: string;
-  subtitle: string;
-  reason: string;
-  glow: string;
-};
 
 const laneCount = 3;
 const laneHeight = 88;
@@ -17,41 +8,62 @@ const carSize = 52;
 const gameWidth = 760;
 const gameHeight = laneCount * laneHeight;
 const finishScore = 40;
-// Put the cropped images in the project's /public folder
-// public/crayen-face.png
-// public/me-face.png
 const playerFaceSrc = "/crayen-face.png";
 const obstacleFaceSrc = "/me-face.png";
 
-const cutResult: ResultType = {
+const cutResult = {
   title: "Cut it ✂️",
   subtitle: "A fresh look could be fun.",
   reason: "You made it to the finish. Maybe this is your sign to try a haircut.",
   glow: "from-pink-400 via-rose-300 to-orange-200",
 };
 
-const keepResult: ResultType = {
+const keepResult = {
   title: "Keep it 💫",
   subtitle: "Your current hair is already lovely.",
   reason: "A little crash means maybe not yet. Your current hair still looks really nice.",
   glow: "from-violet-400 via-fuchsia-300 to-pink-200",
 };
 
-function clamp(value: number, min: number, max: number) {
+function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function GlassCard({ className = "", children }) {
+  return (
+    <div className={`rounded-[32px] border border-white/60 bg-white/60 shadow-[0_20px_80px_rgba(255,255,255,0.35)] backdrop-blur-xl ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function GameButton({ children, className = "", variant = "primary", ...props }) {
+  const base =
+    "inline-flex items-center justify-center rounded-2xl px-5 h-12 font-semibold transition active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed";
+  const styles =
+    variant === "outline"
+      ? "border border-white/70 bg-white/70 text-slate-700"
+      : "bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 text-white shadow-[0_15px_40px_rgba(236,72,153,0.3)]";
+
+  return (
+    <button className={`${base} ${styles} ${className}`} {...props}>
+      {children}
+    </button>
+  );
 }
 
 export default function HairCutDecisionPage() {
   const [lane, setLane] = useState(1);
   const [running, setRunning] = useState(false);
   const [score, setScore] = useState(0);
-  const [result, setResult] = useState<ResultType | null>(null);
-  const [obstacles, setObstacles] = useState<Array<{ id: number; lane: number; x: number }>>([]);
+  const [result, setResult] = useState(null);
+  const [obstacles, setObstacles] = useState([]);
   const [flashCrash, setFlashCrash] = useState(false);
+
   const obstacleIdRef = useRef(0);
   const spawnTickRef = useRef(0);
-  const animationRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number | null>(null);
+  const animationRef = useRef(null);
+  const lastTimeRef = useRef(null);
 
   const roadLines = useMemo(() => Array.from({ length: 12 }, (_, i) => i), []);
   const progressPercent = Math.min((score / finishScore) * 100, 100);
@@ -81,7 +93,7 @@ export default function HairCutDecisionPage() {
     }
   };
 
-  const endGame = (didWin: boolean) => {
+  const endGame = (didWin) => {
     if (!didWin) {
       setFlashCrash(true);
       window.setTimeout(() => setFlashCrash(false), 260);
@@ -100,7 +112,7 @@ export default function HairCutDecisionPage() {
   };
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event) => {
       if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
         setLane((prev) => clamp(prev - 1, 0, laneCount - 1));
       }
@@ -122,12 +134,14 @@ export default function HairCutDecisionPage() {
 
     const carX = 96;
 
-    const tick = (time: number) => {
+    const tick = (time) => {
       const dynamicSpeed = 300 + score * 7;
       const spawnEveryMs = Math.max(340, 900 - score * 14);
+
       if (lastTimeRef.current == null) {
         lastTimeRef.current = time;
       }
+
       const delta = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
       spawnTickRef.current += delta * 1000;
@@ -138,7 +152,8 @@ export default function HairCutDecisionPage() {
         if (spawnTickRef.current >= spawnEveryMs) {
           spawnTickRef.current = 0;
           const obstacleBatch = score >= 20 && Math.random() > 0.55 ? 2 : 1;
-          const usedLanes = new Set<number>();
+          const usedLanes = new Set();
+
           for (let i = 0; i < obstacleBatch; i += 1) {
             let newLane = Math.floor(Math.random() * laneCount);
             let safety = 0;
@@ -152,6 +167,7 @@ export default function HairCutDecisionPage() {
               { id: obstacleIdRef.current++, lane: newLane, x: gameWidth + 40 + i * 76 },
             ];
           }
+
           setScore((current) => {
             const newScore = current + 1;
             if (newScore >= finishScore) {
@@ -187,16 +203,12 @@ export default function HairCutDecisionPage() {
         animationRef.current = null;
       }
     };
-  }, [running, lane]);
+  }, [running, lane, score]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7fb_0%,_#f9e9ff_35%,_#f6d4e8_70%,_#f4c8d0_100%)] px-4 py-8 text-slate-800">
       <div className="mx-auto max-w-6xl">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/70 px-4 py-2 text-sm font-medium shadow-sm backdrop-blur-md">
             <Heart className="h-4 w-4 text-pink-500" />
             For Crayen 💗
@@ -213,10 +225,10 @@ export default function HairCutDecisionPage() {
         </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="overflow-hidden rounded-[32px] border-white/60 bg-white/60 shadow-[0_20px_80px_rgba(255,255,255,0.35)] backdrop-blur-xl">
-            <CardContent className="p-4 md:p-6">
+          <GlassCard className="overflow-hidden">
+            <div className="p-4 md:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="rounded-2xl bg-white px-4 py-2 shadow-sm">
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Score</div>
                     <div className={`text-2xl font-black transition-colors ${scoreTone}`}>{score}/{finishScore}</div>
@@ -231,21 +243,14 @@ export default function HairCutDecisionPage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button
-                    onClick={startGame}
-                    className="h-12 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-400 to-fuchsia-500 px-5 text-white shadow-[0_15px_40px_rgba(236,72,153,0.3)]"
-                  >
+                  <GameButton onClick={startGame} disabled={running}>
                     <Sparkles className="mr-2 h-4 w-4" />
                     {running ? "Running..." : "Start"}
-                  </Button>
-                  <Button
-                    onClick={resetGame}
-                    variant="outline"
-                    className="h-12 rounded-2xl border-white/70 bg-white/70 px-5"
-                  >
+                  </GameButton>
+                  <GameButton onClick={resetGame} variant="outline">
                     <RefreshCcw className="mr-2 h-4 w-4" />
                     Reset
-                  </Button>
+                  </GameButton>
                 </div>
               </div>
 
@@ -257,7 +262,10 @@ export default function HairCutDecisionPage() {
                 />
               </div>
 
-              <div className={`relative mx-auto w-full overflow-hidden rounded-[28px] border border-white/70 bg-[#2f2f46] shadow-inner transition-all ${flashCrash ? "ring-4 ring-rose-300" : ""}`} style={{ maxWidth: gameWidth }}>
+              <div
+                className={`relative mx-auto w-full overflow-hidden rounded-[28px] border border-white/70 bg-[#2f2f46] shadow-inner transition-all ${flashCrash ? "ring-4 ring-rose-300" : ""}`}
+                style={{ maxWidth: gameWidth }}
+              >
                 <div className="relative" style={{ height: gameHeight + 44 }}>
                   <div className="absolute left-0 right-0 top-0 z-20 flex justify-center px-4 pt-3">
                     <div className="rounded-2xl bg-white/92 px-4 py-2 text-center shadow-lg">
@@ -341,14 +349,18 @@ export default function HairCutDecisionPage() {
               </div>
 
               <div className="mt-4 flex gap-3 md:hidden">
-                <Button onClick={() => setLane((prev) => clamp(prev - 1, 0, laneCount - 1))} variant="outline" className="flex-1 rounded-2xl bg-white/70">Up</Button>
-                <Button onClick={() => setLane((prev) => clamp(prev + 1, 0, laneCount - 1))} variant="outline" className="flex-1 rounded-2xl bg-white/70">Down</Button>
+                <GameButton onClick={() => setLane((prev) => clamp(prev - 1, 0, laneCount - 1))} variant="outline" className="flex-1">
+                  Up
+                </GameButton>
+                <GameButton onClick={() => setLane((prev) => clamp(prev + 1, 0, laneCount - 1))} variant="outline" className="flex-1">
+                  Down
+                </GameButton>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
 
-          <Card className="rounded-[32px] border-white/60 bg-white/55 shadow-[0_20px_80px_rgba(255,255,255,0.35)] backdrop-blur-xl">
-            <CardContent className="flex min-h-[420px] flex-col justify-center p-6 md:p-8">
+          <GlassCard className="bg-white/55">
+            <div className="flex min-h-[420px] flex-col justify-center p-6 md:p-8">
               <div className="mb-5 text-sm font-medium uppercase tracking-[0.24em] text-slate-500">Decision</div>
               <AnimatePresence mode="wait">
                 {result ? (
@@ -380,8 +392,8 @@ export default function HairCutDecisionPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </div>
       </div>
     </div>
